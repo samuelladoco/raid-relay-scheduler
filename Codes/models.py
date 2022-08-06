@@ -57,32 +57,33 @@ class MIPModel:
             r: m.add_var(
                 lb=0, ub=self.__to_int(self.R.tw.to - r.est_all), 
                 var_type=mip.CONTINUOUS, name=f't({r.id})', 
-            ) for r in self.R.runners
+            ) 
+            for r in self.R.runners
         }
         #
         w: dict[tuple[Runner, TimeWindow], mip.Var] = {
             (r, i): m.add_var(
-                var_type=mip.BINARY, name=f'w({r.id})', 
-            ) for r in self.R.runners 
+                var_type=mip.BINARY, name=f'w({r.id},{i})', 
+            ) 
+            for r in self.R.runners 
             for i in r.tws
         }
         #
         s: dict[tuple[Runner, int], mip.Var] = {
             (r, j): m.add_var(
-                var_type=mip.BINARY, name=f's({r.id})', 
-            ) for r in self.R.runners 
+                var_type=mip.BINARY, name=f's({r.id},{j})', 
+            ) 
+            for r in self.R.runners 
             for j in J
         }
         z: dict[tuple[Runner, Runner], mip.Var] = {
             (r1, r2): m.add_var(
                 var_type=mip.BINARY, name=f'z({r1.id},{r2.id})', 
-            ) for r1 in self.R.runners 
+            ) 
+            for r1 in self.R.runners 
             for r2 in [rb for rb in self.R.runners if r1 != rb]
         }
 
-        # ★ ジャンルまとめたい
-        # ★ 並列時間固めたい (バックアップは最初か最後に)
-        # ★ 並列深夜避けたい
         #   Objective
         weight: dict[int, int] = {
             j: 10 ** (
@@ -152,7 +153,7 @@ class MIPModel:
         del r
         #
         for r1 in self.R.runners:
-            for r2 in [rb for rb in self.R.runners if r1 < rb]:
+            for r2 in [rb for rb in self.R.runners if r1.id < rb.id]:
                 for j in J:
                     m.add_constr(
                         z[r1, r2] + z[r2, r1] >= s[r1, j] + s[r2, j] - 1,
@@ -163,7 +164,7 @@ class MIPModel:
                         f'zs_leq({r1.id},{r2.id},{j})'
                     )
                 del j
-            if len([rb for rb in self.R.runners if r1 < rb]) > 0:
+            if len([rb for rb in self.R.runners if r1.id < rb.id]) > 0:
                 del r2
         del r1
         #
